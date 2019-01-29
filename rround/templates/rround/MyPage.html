@@ -1,0 +1,12 @@
+{% extends "global/Page.html" %}
+{% load otree static %}
+
+{% block title %}
+    My Page Round {{ view.round_number }}
+{% endblock %}
+
+{% block content %}
+    {% formfields %}
+    {% next_button %}
+
+{% endblock %}
