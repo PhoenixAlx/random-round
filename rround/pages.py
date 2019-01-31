@@ -6,7 +6,8 @@ import random
 from django.db.models import Max
 
 
-def one_more_round(view, participant, player):
+def one_more_round( participant, player):
+
     highest_page_index = participant.participanttoplayerlookup_set.all().aggregate(max=Max('page_index'))[
                              'max'] or 0
     p = player
@@ -52,7 +53,7 @@ def one_more_round(view, participant, player):
                 participant=participant,
                 participant_code=participant.code,
                 page_index=highest_page_index,
-                app_name='rround',
+                app_name=participant._current_app_name,
                 player_pk=p.id,
                 subsession_pk=s.pk,
                 session_pk=participant.session.pk,
@@ -71,7 +72,7 @@ class MyPage(Page):
 class Results(Page):
     def before_next_page(self):
         if random.random() < Constants.prob_to_continue:
-            one_more_round(self, self.participant, self.player)
+            one_more_round(self.participant, self.player)
 
 
 page_sequence = [
