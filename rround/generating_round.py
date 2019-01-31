@@ -5,11 +5,6 @@ from .pages import page_sequence
 from django.apps import apps
 from rround import cp
 
-
-# # TODO::  AssertionError: Session 7pnv9a43 has 3 participants, but round 2 of app 'rround' has 2 players. The number of players in the subsession should always match the number of players in the session. Reset the database and examine your code.
-# TODO: what we need is to get the highest possible round number, and for in the loop for each round create subsession,
-# todo: a large group, and n players. then for each participant create as many lookups as needed for their personal problems
-
 def preparing_db(session):
     max_round = session.vars.get('max_round', 1)
     for r in range(2, max_round + 1):
