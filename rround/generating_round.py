@@ -1,42 +1,51 @@
 from otree.models_concrete import ParticipantToPlayerLookup
 from .models import Constants, Player, Group, Subsession
 from django.db.models import Max
+from .pages import page_sequence
+from django.apps import apps
+from rround import cp
 
 
-def one_more_round(view, page_sequence):
-    player = view.player
-    participant = view.participant
+# # TODO::  AssertionError: Session 7pnv9a43 has 3 participants, but round 2 of app 'rround' has 2 players. The number of players in the subsession should always match the number of players in the session. Reset the database and examine your code.
+# TODO: what we need is to get the highest possible round number, and for in the loop for each round create subsession,
+# todo: a large group, and n players. then for each participant create as many lookups as needed for their personal problems
+
+def preparing_db(session):
+    max_round = session.vars.get('max_round', 1)
+    for r in range(2, max_round + 1):
+        s = Subsession(round_number=r, session=session)
+        s.save()  # todo: move to bulk_create
+        g = Group(
+            session=session,
+            subsession=s,
+            round_number=r,
+            id_in_subsession=1
+        )
+        g.save()
+        for i, part in enumerate(session.get_participants()):
+            p = Player(
+                session=session,
+                subsession=s,
+                round_number=r,
+                participant=part,
+                group=g,
+                id_in_group=i + 1
+            )
+            p.save()
+            if r <= part.vars['final_round']:
+                one_more_round(
+                    participant=part,
+                    player=p,
+                    group=g,
+                    subsession=s,
+                    session=session
+                )
+
+
+def one_more_round(participant, player, group, subsession, session):
+    app_name = player._meta.app_label
     highest_page_index = participant.participanttoplayerlookup_set.all().aggregate(max=Max('page_index'))[
                              'max'] or 0
-
-    curround = player.round_number
-    newround = curround + 1
-    session = participant.session
-
-    s, _ = Subsession.objects.get_or_create(
-        round_number=newround, session=session)
-
-    max_group_id = s.group_set.all().aggregate(max=Max('id_in_subsession'))['max']
-
-    if max_group_id:
-        id_in_subsession = max_group_id + 1
-    else:
-        id_in_subsession = 1
-    g, _ = Group.objects.get_or_create(
-        session=session,
-        subsession=s,
-        round_number=newround, defaults={'id_in_subsession': id_in_subsession}
-    )
-
-    p = Player(
-        session=participant.session,
-        subsession=s,
-        round_number=newround,
-        participant=participant,
-        group=g,
-        id_in_group=player.id_in_group
-    )
-    p.save()
 
     participant_to_player_lookups = []
     for v in page_sequence:
@@ -51,9 +60,9 @@ def one_more_round(view, page_sequence):
                 participant=participant,
                 participant_code=participant.code,
                 page_index=highest_page_index,
-                app_name=participant._current_app_name,
-                player_pk=p.id,
-                subsession_pk=s.pk,
+                app_name=app_name,
+                player_pk=player.id,
+                subsession_pk=subsession.pk,
                 session_pk=participant.session.pk,
                 url=url))
         participant._max_page_index += 1
